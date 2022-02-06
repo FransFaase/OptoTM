@@ -1,5 +1,31 @@
 #include <stdio.h>
 
+class NatNum
+{
+private:
+	unsigned long long _v;
+public:
+	NatNum() : _v(0) {}
+	NatNum(unsigned long long v) : _v(v) {}
+	void print()
+	{
+		printf("%llu", _v);
+	}
+	void print(int w)
+	{
+		printf("%*llu", w, _v);
+	}
+	void dec() { _v--; }
+	void inc() { _v++; }
+	NatNum& operator=(const NatNum &rhs) { _v = rhs._v; return *this; }
+	NatNum& operator=(unsigned long long rhs) { _v = rhs; return *this; }
+	bool operator==(unsigned long long rhs) { return _v == rhs; }
+	bool operator<(unsigned long long rhs) { return _v < rhs; }
+	bool operator>(unsigned long long rhs) { return _v > rhs; }
+	NatNum& operator+=(unsigned long long rhs) { _v += rhs; return *this; }
+	NatNum& operator+=(const NatNum &rhs) { _v += rhs._v; return *this; }
+};
+
 struct TM_Rule
 {
 	int col;
@@ -76,14 +102,14 @@ struct Cell
 {
 	Cell *next;
 	int col;
-	long long mul;
+	NatNum mul;
 };
 
 Cell *old_cells = 0;
 
 struct Tape
 {
-	long long step;
+	NatNum step;
 	Cell* left_tape;
 	Cell* right_tape;
 	int col;
@@ -99,7 +125,7 @@ struct Tape
 		old_cells = top;
 	}
 	
-	void push(Cell *&tape, int new_col, long long mul = 1)
+	void push(Cell *&tape, int new_col, NatNum mul = NatNum(1))
 	{
 		if (tape != 0 && tape->col == new_col)
 		{
@@ -125,8 +151,12 @@ struct Tape
 	void pop(Cell *&tape)
 	{
 		col = tape != 0 ? tape->col : 0;
-		if (tape != 0 && --tape->mul == 0)
-			popCell(tape);
+		if (tape != 0)
+		{
+			tape->mul.dec();
+			if (tape->mul == 0)
+				popCell(tape);
+		}
 	}
 	
 	/*
@@ -146,11 +176,11 @@ struct Tape
 	}
 	
 	*/	
-	long long popCol(Cell *&tape)
+	NatNum popCol(Cell *&tape)
 	{
 		if (tape == 0 || tape->col != col)
 			return 0;
-		long long m = tape->mul;
+		NatNum m = tape->mul;
 		popCell(tape);
 		col = tape != 0 ? tape->col : 0;
 		return m;
@@ -158,22 +188,31 @@ struct Tape
 
 	bool print()
 	{
-		if (step > 1367361263051LL)
+		if (step > 1367361263051LLU)
 			return false;
 		
-		printf("%13lld %c%c ", step, 'A'+state, '0'+col);
+		step.print(13);
+		printf(" %c%c ", 'A'+state, '0'+col);
 		for (Cell *c = left_tape; c != 0; c = c->next)
 		{
 			printf("%c", '0'+c->col);
 			if (c->mul > 1)
-				printf("[%lld]", c->mul);
+			{
+				printf("[");
+				c->mul.print();
+				printf("]");
+			}
 		}
 		printf(" ");
 		for (Cell *c = right_tape; c != 0; c = c->next)
 		{
 			printf("%c", '0'+c->col);
 			if (c->mul > 1)
-				printf("[%lld]", c->mul);
+			{
+				printf("[");
+				c->mul.print();
+				printf("]");
+			}
 		}
 		printf("\n");
 		return true;
@@ -183,30 +222,32 @@ struct Tape
 	{
 		push(left_tape, new_col);
 		pop(right_tape);
-		step++;
+		step.inc();
 	}
 	
 	void moveLeft(int new_col)
 	{
 		push(right_tape, new_col);
 		pop(left_tape);
-		step++;
+		step.inc();
 	}
 
 	void moveRightN(int new_col)
 	{
-		long long m = popCol(right_tape);
-		push(left_tape, new_col, m+1);
+		NatNum m = popCol(right_tape);
+		m.inc();
+		push(left_tape, new_col, m);
 		pop(right_tape);
-		step += m+1;
+		step += m;
 	}
 	
 	void moveLeftN(int new_col)
 	{
-		long long m = popCol(left_tape);
-		push(right_tape, new_col, m+1);
+		NatNum m = popCol(left_tape);
+		m.inc();
+		push(right_tape, new_col, m);
 		pop(left_tape);
-		step += m+1;
+		step += m;
 	}
 };
 
